@@ -586,14 +586,7 @@ var Game = {
         el.classList.add('show');
     },
     setupRenderer: function() {
-        var canvas = document.createElement('canvas');
-        var context = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (!context) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('error-screen').classList.add('show');
-            return;
-        }
-        renderer = new THREE.WebGLRenderer({ antialias: true, canvas: canvas || undefined });
+        renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;

@@ -1106,7 +1106,7 @@ function makeEnemyAI(speed) {
       const proj = new THREE.Mesh(projGeo, projMat);
       proj.position.copy(this.group.position); proj.position.y += 2;
       proj.userData = { velocity: dir.clone().multiplyScalar(30), life: 5, owner: this };
-      scene.add(proj); GameObjectManager.add({ group: { position: proj.position }, type: 'projectile', update: updateProjectile, active: true, takeDamage: (d) => {} }, 'projectile');
+      scene.add(proj); GameObjectManager.add({ group: proj, type: 'projectile', update: updateProjectile, active: true, takeDamage: (d) => {} }, 'projectile');
       playSound('punch_light', 0.3);
     }
   };
