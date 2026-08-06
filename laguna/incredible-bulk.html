@@ -59,6 +59,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Arial', 
     <div class="bar-container" id="health-bar"><div class="bar-fill" id="health-fill" style="background:#ff4444;width:100%"></div></div>
     <div class="bar-container" style="top:60px;left:20px;"><div class="bar-fill" id="rage-fill" style="background:#d4af37;width:0%"></div></div>
     <div id="combo-display" class="hidden">COMBO! x<span id="combo-count">1</span></div>
+    <div id="score-display" style="position:absolute; top:20px; left:20px; color:#fff; font-size:14px; text-shadow:1px 1px 2px rgba(0,0,0,0.8); z-index:10; pointer-events:none;">SCORE: 0</div>
     <div class="minimap-container"><canvas id="minimap" class="minimap"></canvas></div>
     <div id="tutorial" class="hidden"></div>
   </div>
@@ -66,12 +67,18 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Arial', 
     <div class="title">THE INCREDIBLE BULK</div>
     <div class="subtitle">Destruction has evolved</div>
     <button class="btn" id="start-btn">PRESS TO RAMPAGE</button>
+    <div style="color:#d4af47;font-size:14px;text-align:center;animation:pulse 1.5s infinite;">Click or press ENTER to begin</div>
   </div>
   <div id="pause-menu" class="screen hidden">
     <div class="title">PAUSED</div>
     <button class="btn" id="resume-btn">RESUME</button>
     <button class="btn" id="restart-btn">RESTART</button>
     <button class="btn" id="stats-btn">STATS</button>
+  </div>
+  <div id="gameover-menu" class="screen hidden">
+    <div class="title">GAME OVER</div>
+    <div class="subtitle" id="gameover-stats">Score: 0 | Waves: 0</div>
+    <button class="btn" id="restart-btn-2">RESTART RAMPAGE</button>
   </div>
   <div id="cutscene" class="hidden">
     <div class="cutscene-text" id="cutscene-text"></div>
@@ -129,6 +136,7 @@ const CONFIG = {
 let state = {
   game: 'loading',
   score: 0,
+  highScore: parseInt(localStorage.getItem('bulkHighScore') || '0'),
   rage: 0,
   health: 100,
   maxHealth: 100,
@@ -146,6 +154,7 @@ let state = {
   activePowerups: {},
   powerupTimers: {},
   cutscene: false,
+  gameOverCutscene: false,
   tutorialStep: 0,
   tutorialDone: JSON.parse(localStorage.getItem('tutorialDone') || 'false'),
   skins: { redShirt: false },
@@ -166,8 +175,14 @@ async function initRenderer() {
   canvas2d = document.getElementById('minimap');
 
   // Check WebGPU support
-  if (await THREE.WebGPURenderer.isWebGPUContextAvailable()) {
-     renderer = new THREE.WebGPURenderer({
+  let webgpuAvailable = false;
+  try {
+    webgpuAvailable = await THREE.WebGPURenderer.isWebGPUContextAvailable();
+  } catch(e) {
+    webgpuAvailable = false;
+  }
+  if (webgpuAvailable) {
+    renderer = new THREE.WebGPURenderer({
       canvas: canvas,
       antialias: true,
       alpha: false,
@@ -347,7 +362,11 @@ const Input = {
   mouse: { x: 0, y: 0, lx: 0, ly: 0, button: 0, moveX: 0, moveY: 0, locked: false },
   touches: [],
   init() {
-    window.addEventListener('keydown', (e) => { this.keys[e.code] = true; if (e.code === 'KeyP') togglePause(); });
+    window.addEventListener('keydown', (e) => {
+      this.keys[e.code] = true;
+      if (e.code === 'KeyP') togglePause();
+      if (e.code === 'Enter' && state.game === 'loading') document.getElementById('start-btn').click();
+    });
     window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
     window.addEventListener('mousedown', (e) => { this.mouse.button = e.button; });
     window.addEventListener('mouseup', (e) => { this.mouse.button = -1; });
@@ -648,7 +667,24 @@ class BulkCharacter {
   grab(target) { this.isGrabbing = true; this.grabTarget = target; this.velocity.set(0, 0, 0); }
   throw(target, trajectory) { if (target) target.throw(trajectory); this.isGrabbing = false; this.grabTarget = null; }
   takeDamage(amount) { const amt = this.rageActive ? amount * 0.5 : amount; this.health -= amt; if (this.health <= 0) this.onDeath(); return this.health; }
-  onDeath() { showCutscene("GAME OVER!"); setTimeout(() => { state.game = 'gameOver'; updateUI(); }, 3000); }
+  onDeath() {
+    playSound('roar');
+    state.game = 'cutscene'; state.gameOverCutscene = true;
+    // Save high score
+    if (state.score > state.highScore) {
+      state.highScore = Math.floor(state.score);
+      localStorage.setItem('bulkHighScore', state.highScore);
+      showAchievement("NEW HIGH SCORE: " + state.highScore);
+    }
+    showCutscene("GAME OVER!\n\nThe Bulk has fallen...\nBut the legend of destruction lives on!");
+    setTimeout(() => {
+      state.game = 'gameOver'; state.gameOverCutscene = false;
+      document.getElementById('cutscene').classList.add('hidden');
+      document.getElementById('gameover-stats').textContent = 'Score: ' + Math.floor(state.score) + ' | High Score: ' + state.highScore + ' | Waves: ' + state.wave;
+      document.getElementById('gameover-menu').classList.remove('hidden');
+      saveGame();
+    }, 3000);
+  }
 }
 
 // ========================
@@ -860,6 +896,7 @@ function showAchievement(text) {
 function updateUI() {
   document.getElementById('health-fill').style.width = Math.max(0, state.health) + '%';
   document.getElementById('rage-fill').style.width = Math.min(100, state.rage) + '%';
+  document.getElementById('score-display').textContent = 'SCORE: ' + Math.floor(state.score);
   const comboEl = document.getElementById('combo-display');
   if (state.combo > 1) { comboEl.classList.remove('hidden'); comboEl.innerHTML = 'COMBO! x<span id="combo-count">' + state.combo + '</span>'; }
   else comboEl.classList.add('hidden');
@@ -1349,7 +1386,32 @@ function createVehicle(group, x, z) {
   mesh.position.set(x, 2, z); mesh.castShadow = true; mesh.receiveShadow = true;
   mesh.userData = { type: 'car', health: 50, maxHealth: 50, speed: (Math.random()-0.5)*0.1 };
   group.add(mesh);
-  GameObjectManager.add({ group: mesh, type: 'car', health: 50, update: function(d) { this.group.position.x += this.speed || 0.1; if (this.group.position.x > WORLD_HALF + 100) this.group.position.x = -WORLD_HALF - 100; } }, 'car');
+  const carObj = {
+    group: mesh, type: 'car', health: 50,
+    update: function(d) {
+      if (this.isThrown) {
+        if (this.throwVel) {
+          this.throwVel.y += GRAVITY * d;
+          this.group.position.addScaledVector(this.throwVel, d);
+          this.group.rotation.x += d * 5; this.group.rotation.z += d * 3;
+        }
+        this.throwLife = (this.throwLife || 3) - d;
+        if (this.throwLife <= 0 || this.group.position.y < 0) {
+          this.isThrown = false; this.group.position.y = 2;
+          playSound('explosion', 0.5);
+          createShockwave(this.group.position, 10);
+          this.active = false;
+        }
+      } else {
+        this.group.position.x += this.speed || 0.1;
+        if (this.group.position.x > WORLD_HALF + 100) this.group.position.x = -WORLD_HALF - 100;
+      }
+    },
+    throw: function(trajectory) { this.isThrown = true; this.throwVel = trajectory.clone().multiplyScalar(60); this.throwVel.y = Math.max(this.throwVel.y, 20); this.throwLife = 5; playSound('punch_heavy'); },
+    takeDamage: function(d) { this.health -= d; if (this.health <= 0) { this.active = false; state.stats.destroyedCars++; state.score += 50; state.criticalMass += 5; createDebris(this.group.position, 5); } },
+    active: true
+  };
+  GameObjectManager.add(carObj, 'car');
 }
 
 function createStartingPlatform(group) {
@@ -1379,7 +1441,8 @@ document.getElementById('start-btn').addEventListener('click', () => {
 
 document.getElementById('resume-btn').addEventListener('click', () => { document.getElementById('pause-menu').classList.add('hidden'); state.game = 'playing'; });
 document.getElementById('restart-btn').addEventListener('click', () => location.reload());
-document.getElementById('stats-btn').addEventListener('click', () => alert('Score: ' + state.score + '\nWaves: ' + state.wave + '\nMax Combo: ' + state.stats.maxCombo + '\nEnemies Killed: ' + state.stats.enemiesKilled));
+document.getElementById('stats-btn').addEventListener('click', () => alert('Score: ' + Math.floor(state.score) + '\nHigh Score: ' + state.highScore + '\nWaves: ' + state.wave + '\nMax Combo: ' + state.stats.maxCombo + '\nEnemies Killed: ' + state.stats.enemiesKilled + '\nRage Uses: ' + (state.stats.rageUsed || 0)));
+document.getElementById('restart-btn-2')?.addEventListener('click', () => location.reload());
 
 // ========================
 // Background Music System
@@ -1579,7 +1642,7 @@ function animate() {
     TimeOfDay.update(delta);
     TimeOfDay.setProgress(state.score);
   }
-  if (state.game === 'cutscene' && Input.isJustPressed('Space')) {
+  if (state.game === 'cutscene' && Input.isJustPressed('Space') && !state.gameOverCutscene) {
     hideCutscene(); state.game = 'playing';
     setTimeout(() => showTutorial("WASD to MOVE, SPACE to JUMP, Mouse to look. Left-click to PUNCH, Right-click to GRAB. R for RAGE!"), 500);
     setTimeout(() => showTutorial("Shift+Space for SUPER LEAP! Consecutive jumps get higher! (x5 max)"), 5000);

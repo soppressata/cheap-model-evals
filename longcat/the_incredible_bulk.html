@@ -576,6 +576,9 @@ var Game = {
             this.generateCity();
             this.setupUI();
             this.animate();
+            // Hide loading screen to reveal start screen
+            document.getElementById('loading').style.opacity = '0';
+            setTimeout(function() { document.getElementById('loading').style.display = 'none'; }, 1000);
         } catch(e) {
             this.showError(e);
         }
