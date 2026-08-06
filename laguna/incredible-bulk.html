@@ -8,7 +8,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Arial', sans-serif; }
 #container { position: relative; width: 100%; height: 100%; }
-#canvas { width: 100%; height: 100%; display: block; }
+#canvas { width: 100%; height: 100%; display: block; z-index: 1; position: relative; }
 #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 .hidden { display: none !important; }
 /* HUD Elements */
@@ -19,7 +19,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Arial', 
 #combo-display { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 24px; font-weight: bold; color: #ff4444; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; }
 .minimap-container { position: absolute; top: 20px; right: 20px; width: 160px; height: 160px; background: rgba(0,0,0,0.7); border: 2px solid #fff; border-radius: 4px; pointer-events: none; overflow: hidden; }
 .minimap { width: 100%; height: 100%; }
-.screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; }
+.screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; pointer-events: auto; }
 .btn { padding: 12px 30px; font-size: 18px; background: #d4af37; color: #000; border: 2px solid #fff; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 10px; transition: all 0.2s; }
 .btn:hover { background: #e6c200; transform: scale(1.05); }
 .btn:active { transform: scale(0.98); }
@@ -66,6 +66,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Arial', 
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/tsl/TSL.js",
     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
     "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/WebGPU.js"
   }
@@ -101,14 +102,16 @@ let state = {
   unlocks: { sizeBoost: false, infiniteRage: false },
   criticalMass: 0,
   criticalMassTarget: 10000,
-  stats: { destroyedCars: 0, destroyedBuildings: 0, punchesThrown: 0, enemiesKilled: 0, distanceTraveled: 0, maxCombo: 0 },
+  stats: { destroyedCars: 0, destroyedBuildings: 0, punchesThrown: 0, enemiesKilled: 0, distanceTraveled: 0, maxCombo: 0, rageUsed: 0 },
   activePowerups: {},
   powerupTimers: {},
   cutscene: false,
   tutorialStep: 0,
   tutorialDone: JSON.parse(localStorage.getItem('tutorialDone') || 'false'),
   skins: { redShirt: false },
-  selectedSkin: 'default'
+  selectedSkin: 'default',
+  lastChunkX: 0,
+  lastChunkZ: 0
 };
 
 console.log('The Incredible Bulk - Initializing...');
@@ -117,13 +120,13 @@ console.log('The Incredible Bulk - Initializing...');
 // SETUP: Renderer, Scene, Camera
 // ========================
 import * as THREE from 'three';
-import { WebGPURenderer, color, vec2, vec3, vec4, float, uniform, attribute, varying, instanceIndex } from 'three/tsl';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { color, vec2, vec3, vec4, float, uniform, attribute, varying, instanceIndex, mix } from 'three/tsl';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { MotionBlurPass } from 'three/addons/postprocessing/MotionBlurPass.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 let renderer, scene, camera, composer, controls, clock;
@@ -137,7 +140,7 @@ async function initRenderer() {
 
   // Check WebGPU support
   if (await THREE.WebGPURenderer.isWebGPUContextAvailable()) {
-    renderer = new WebGPURenderer({
+     renderer = new THREE.WebGPURenderer({
       canvas: canvas,
       antialias: true,
       alpha: false,
@@ -225,26 +228,33 @@ function setupPostProcessing() {
   composer = new EffectComposer(renderer);
 
   const renderPass = new RenderPass(scene, camera);
-  renderPass.enableBloom = true;
-  renderPass.bloomThreshold = 0;
-  renderPass.bloomStrength = 1.5;
-  renderPass.bloomRadius = 0.4;
   composer.addPass(renderPass);
 
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
     1.5, 0.4, 0.85
   );
+  postProcessingPasses.bloom = bloomPass;
   composer.addPass(bloomPass);
 
-  // Custom shader pass for god rays / vignette using TSL
-  const godRayPass = new ShaderPass({
-    uniforms: {
-      tDiffuse: new THREE.Uniform1v(0),
-      time: new THREE.Uniform(0),
-      cameraPos: new THREE.Uniform(new THREE.Vector3()),
-      sunDir: new THREE.Uniform(new THREE.Vector3()),
-    },
+  // Motion blur for high-speed action
+  if (gpuSupported) {
+    const motionBlurPass = new MotionBlurPass({
+      jitterStrength: 2.0,
+      jitterSamples: 8,
+    });
+    motionBlurPass.enabled = false; // Enable dynamically for high-speed jumps
+    postProcessingPasses.motionBlur = motionBlurPass;
+    composer.addPass(motionBlurPass);
+  }
+
+  // God rays
+   const godRayPass = new ShaderPass({
+     uniforms: {
+       time: { value: 0 },
+       cameraPos: { value: new THREE.Vector3() },
+       sunDir: { value: new THREE.Vector3() },
+     },
     vertexShader: `
       varying vec2 vUv;
       void main() {
@@ -359,18 +369,22 @@ const SkinShaderMaterial = {
     return this.createWebGLMaterial();
   },
 
-  createWebGPUMaterial() {
+   createWebGPUMaterial() {
     const material = new THREE.MeshStandardNodeMaterial();
     material.color = color(0xf5d6c6);
     material.metalness = float(0.1);
     material.roughness = float(0.7);
     material.thickness = float(0.8);
+    material.thicknessColor = color(0xf5d6c6);
     material.clearcoat = float(0.05);
     material.clearcoatRoughness = float(0.1);
-    material.emissive = uniform(0).mix(color(0x000000), color(0xff0000));
-    material.emissiveIntensity = float(0);
+    // Rage emissive: transitions from black to red glow
+    const rageLevel = uniform(0);
+    SkinShaderMaterial._rageUniform = rageLevel;
+    material.emissive = mix(color(0x000000), color(0xff0000), rageLevel);
+    material.emissiveIntensity = mix(float(0), float(1), rageLevel);
     return material;
-  },
+   },
 
   createWebGLMaterial() {
     return new THREE.MeshPhysicalMaterial({
@@ -404,7 +418,7 @@ class BulkCharacter {
     this.combo = 0; this.comboTimer = 0;
     this.isGrabbing = false; this.grabTarget = null;
     this.isPunching = false; this.punchTimer = 0;
-    this.isSlamming = false; this.isClapping = false;
+    this.isSlamming = false; this.isClapping = false; this.canSmash = false;
     this.cape = null; this.shirtRemnants = []; this.shadow = null; this.skinMaterial = null;
   }
 
@@ -502,8 +516,39 @@ class BulkCharacter {
     if (state.rage >= 100 || state.unlocks.infiniteRage) {
       this.rageActive = true; this.rageTimer = 15; this.rage = 100; state.rage = 0;
       this.morphParams.rage = 1; state.stats.rageUsed = (state.stats.rageUsed || 0) + 1;
+      this.canSmash = true;
+      playSound('roar');
       showCutscene("RAGE MODE ACTIVATED! The Bulk grows to 20 meters, veins glowing red!");
     }
+  }
+
+  bulkSmash() {
+    if (!this.rageActive || !this.canSmash) return;
+    this.canSmash = false;
+    this.isSlamming = true; this.punchTimer = 2;
+    this.velocity.y = -150;
+    // Massive shockwave
+    createShockwave(this.group.position, 80);
+    createShockwave(this.group.position, 40);
+    // Damage nearby buildings
+    buildings.forEach(b => {
+      if (b.userData && b.userData.destructible && b.position.distanceTo(this.group.position) < 60) {
+        damageBuilding(b, 99999, b.position);
+      }
+    });
+    // Knockback enemies
+    GameObjectManager.getByType('enemy').forEach(e => {
+      const dir = e.group.position.clone().sub(this.group.position).normalize();
+      if (e.knockback) e.knockback(dir, 200); else { e.group.position.addScaledVector(dir, 10); }
+      e.takeDamage(99999);
+    });
+    // Screen shake effect
+    camera.shake = { intensity: 2, duration: 1, time: 0 };
+    playSound('slam');
+    playSound('explosion');
+    state.score += 5000;
+    state.rage = 0;
+    showTutorial("BULK SMASH! Everything within range is destroyed!");
   }
 
   jump(power = 1) {
@@ -538,15 +583,19 @@ class BulkCharacter {
     return heavy ? 80 : 40;
   }
 
-  updateRage(deltaTime) {
+   updateRage(deltaTime) {
     if (this.rageActive) {
       this.rageTimer -= deltaTime;
       this.health = Math.min(this.maxHealth, this.health + deltaTime * 20);
       if (this.rageTimer <= 0) { this.rageActive = false; this.rage = 0; this.morphParams.rage = 0; }
     }
     const intensity = this.rageActive ? 0.8 + Math.sin(performance.now() * 0.02) * 0.2 : 0;
+    this.morphParams.rage = this.rageActive ? Math.min(1, this.rageTimer / 15) : 0;
+    // Update TSL skin shader rage uniform
+    if (gpuSupported && SkinShaderMaterial._rageUniform) {
+      SkinShaderMaterial._rageUniform.value = this.morphParams.rage;
+    }
     if (this.mats.emissive) this.mats.emissive.opacity = intensity * 0.5;
-    this.morphParams.rage = this.rageActive ? Math.min(1, this.rageTimer / 10) : 0;
   }
 
   updateSizeBoost(deltaTime) {
@@ -822,6 +871,19 @@ function updateCamera(mouseDelta, dt) {
   cameraTarget.lerp(targetPos, cameraSmooth);
   camera.position.lerp(cameraTarget.clone().add(cameraOffset), cameraSmooth);
   camera.lookAt(bulk.group.position.clone().add(new THREE.Vector3(0, 5, 0)));
+
+  // Camera shake
+  if (camera.shake) {
+    if (camera.shake.time < camera.shake.duration) {
+      const intensity = camera.shake.intensity * (1 - camera.shake.time / camera.shake.duration);
+      camera.position.x += (Math.random() - 0.5) * intensity;
+      camera.position.y += (Math.random() - 0.5) * intensity;
+      camera.position.z += (Math.random() - 0.5) * intensity;
+      camera.shake.time += dt;
+    } else {
+      delete camera.shake;
+    }
+  }
 }
 
 // ========================
@@ -851,7 +913,7 @@ function updateGameplay(delta) {
   const dt = delta; const b = bulk; if (!b) return;
 
   if (Input.isJustPressed('KeyR') && (state.rage >= 100 || state.unlocks.infiniteRage)) b.startRage();
-  if (b.rageActive && Input.isJustPressed('KeyR')) b.slam();
+  if (b.rageActive && Input.isJustPressed('KeyR')) b.bulkSmash();
   if (Input.isJustPressed('KeyQ') && b.rageActive) b.slam();
   if (Input.isJustPressed('KeyE') && b.rageActive) b.clap();
   if (Input.isJustPressed('Space') && b.jump()) playSound('jump');
@@ -879,6 +941,26 @@ function updateGameplay(delta) {
   if (b.group.position.y <= PLAYER_HEIGHT * b.morphParams.size) { b.group.position.y = PLAYER_HEIGHT * b.morphParams.size; b.velocity.y = 0; b.onGround = true; } else b.onGround = false;
   if (b.facing.lengthSq() > 0.1) b.group.lookAt(b.group.position.clone().add(b.facing));
   b.update(dt);
+
+  // Mouse look and camera
+  const mouseDelta = new THREE.Vector2(Input.mouse.moveX, Input.mouse.moveY);
+  updateCamera(mouseDelta, dt);
+  if (Input.mouse.locked) {
+    const targetPos = bulk.group.position.clone();
+    // Update look target for punches
+    b.targetLook = camera.position.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(30));
+    if (Input.mouse.button === 0 && !b.isPunching && !b.isGrabbing && !b.rageActive) {
+      b.punch(Input.isPressed('KeyW') || Input.isPressed('KeyA') || Input.isPressed('KeyS') || Input.isPressed('KeyD'));
+      addCombo();
+    }
+    if (Input.mouse.button === 2) {
+      if (!b.isGrabbing) {
+        const target = GameObjectManager.getNearest('car', b.group.position, 30);
+        if (target) { b.grab(target); } else if (Input.isPressed('KeyW')) { b.velocity.y = Math.max(b.velocity.y, 0); b.velocity.add(b.facing.clone().multiplyScalar(30)); }
+      } else { b.throw(b.grabTarget, camera.getWorldDirection(new THREE.Vector3())); }
+    }
+    Input.clearMouseDelta();
+  }
 
   state.rage = Math.min(100, state.rage + dt * (b.rageActive ? -10 : 2));
   state.health = b.health;
@@ -1224,7 +1306,6 @@ document.getElementById('start-btn').addEventListener('click', () => {
   state.game = 'cutscene';
   showCutscene("THE INCREDIBLE BULK\n\nOrigin Story:\nDr. Banner was working on a super-soldier serum... but the dosage was... EXCESSIVE. The transformation was immediate. Where Banner ended, The Bulk began. Now he stalks the streets, a titan of muscle and rage, seeking to crush everything in his path.\n\nPress SPACE to begin your rampage!");
   document.getElementById('start-btn').classList.add('hidden');
-  SoundBank.init();
 });
 
 document.getElementById('resume-btn').addEventListener('click', () => { document.getElementById('pause-menu').classList.add('hidden'); state.game = 'playing'; });
@@ -1435,9 +1516,20 @@ function animate() {
   GameObjectManager.update(delta);
   updateMinimap();
 
-  // Update post-processing based on rage
+  // Update post-processing based on rage and velocity
   if (postProcessingPasses.godRay) {
     postProcessingPasses.godRay.uniforms.time.value = performance.now() * 0.001;
+    if (bulk) {
+      postProcessingPasses.godRay.uniforms.cameraPos.value = camera.position;
+      if (scene.userData.sun) postProcessingPasses.godRay.uniforms.sunDir.value = scene.userData.sun.position.clone().normalize();
+    }
+  }
+  if (postProcessingPasses.motionBlur && bulk) {
+    postProcessingPasses.motionBlur.enabled = !CONFIG.reducedMotion && bulk.velocity.length() > 30;
+  }
+  if (postProcessingPasses.bloom) {
+    const bloom = postProcessingPasses.bloom;
+    bloom.strength = 1.5 + (state.rage / 100) * 2;
   }
 
   if (composer) composer.render(); else renderer.render(scene, camera);
@@ -1467,6 +1559,17 @@ window.onBasicInit = function() {
   console.log('The Incredible Bulk is ready! Press START to rampage!');
 };
 
+// ========================
+// Entry Point
+// ========================
+(async function initBasic() {
+  await initRenderer();
+  setupLighting();
+  setupPostProcessing();
+  Input.init();
+  console.log('Basic setup complete');
+  if (typeof window.onBasicInit === 'function') window.onBasicInit();
+})();
 
 
 </script>
