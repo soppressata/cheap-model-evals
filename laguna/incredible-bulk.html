@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Incredible Bulk</title>
+<link rel="icon" href="data:,B">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Arial', sans-serif; }
@@ -393,19 +394,21 @@ const Input = {
 // ========================
 const SkinShaderMaterial = {
   create(gpuSupported) {
-    // Use MeshPhysicalMaterial which supports thickness (subsurface) on both WebGPU and WebGL
     const material = new THREE.MeshPhysicalMaterial({
       color: 0xf5d6c6,
       metalness: 0.1,
       roughness: 0.7,
       thickness: 0.8,
-      thicknessColor: new THREE.Color(0xf5d6c6),
       clearcoat: 0.05,
       clearcoatRoughness: 0.1,
       emissive: new THREE.Color(0x000000),
       emissiveIntensity: 0,
       side: THREE.FrontSide,
     });
+    // Set thicknessColor if supported
+    if ('thicknessColor' in material) {
+      material.thicknessColor = new THREE.Color(0xf5d6c6);
+    }
 
     // Try to upgrade to TSL node material if WebGPU is available
     if (gpuSupported && THREE.MeshStandardNodeMaterial) {
@@ -1639,7 +1642,6 @@ function loadConfig() { const c = JSON.parse(localStorage.getItem('bulkConfig') 
 function animate() {
   if (animId === null) return;
   const delta = Math.min(clock.getDelta(), 0.05);
-  Input.resetFrame();
 
   if (state.game === 'playing') {
     updateGameplay(delta);
@@ -1678,6 +1680,7 @@ function animate() {
   }
 
   if (composer) composer.render(); else renderer.render(scene, camera);
+  Input.resetFrame();
   animId = requestAnimationFrame(animate);
 }
 
