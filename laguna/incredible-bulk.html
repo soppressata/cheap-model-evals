@@ -103,20 +103,16 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Arial', 
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-    "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/tsl/TSL.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
-    "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/WebGPU.js"
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
   }
 }
 </script>
 <script type="module">
-import * as THREE from 'three';
-import { color, vec2, vec3, vec4, float, uniform, attribute, varying, instanceIndex, mix } from 'three/tsl';
+ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { MotionBlurPass } from 'three/addons/postprocessing/MotionBlurPass.js';
 
 // Game constants
 const WORLD_SIZE = 4000;
@@ -278,18 +274,7 @@ function setupPostProcessing() {
   postProcessingPasses.bloom = bloomPass;
   composer.addPass(bloomPass);
 
-  // Motion blur for high-speed action
-  if (gpuSupported) {
-    const motionBlurPass = new MotionBlurPass({
-      jitterStrength: 2.0,
-      jitterSamples: 8,
-    });
-    motionBlurPass.enabled = false; // Enable dynamically for high-speed jumps
-    postProcessingPasses.motionBlur = motionBlurPass;
-    composer.addPass(motionBlurPass);
-  }
-
-  // God rays
+  // Motion blur (custom shader-based for WebGPU compatibility)
    const godRayPass = new ShaderPass({
      uniforms: {
        time: { value: 0 },
@@ -404,41 +389,59 @@ const Input = {
 };
 
 // ========================
-// TSL Skin Shader Material
+// Skin Shader Material (with subsurface scattering)
 // ========================
 const SkinShaderMaterial = {
   create(gpuSupported) {
-    if (gpuSupported && typeof vec3 === 'function') {
-      return this.createWebGPUMaterial();
-    }
-    return this.createWebGLMaterial();
-  },
-
-   createWebGPUMaterial() {
-    const material = new THREE.MeshStandardNodeMaterial();
-    material.color = color(0xf5d6c6);
-    material.metalness = float(0.1);
-    material.roughness = float(0.7);
-    material.thickness = float(0.8);
-    material.thicknessColor = color(0xf5d6c6);
-    material.clearcoat = float(0.05);
-    material.clearcoatRoughness = float(0.1);
-    // Rage emissive: transitions from black to red glow
-    const rageLevel = uniform(0);
-    SkinShaderMaterial._rageUniform = rageLevel;
-    material.emissive = mix(color(0x000000), color(0xff0000), rageLevel);
-    material.emissiveIntensity = mix(float(0), float(1), rageLevel);
-    return material;
-   },
-
-  createWebGLMaterial() {
-    return new THREE.MeshPhysicalMaterial({
-      color: 0xf5d6c6, metalness: 0.1, roughness: 0.7,
-      thickness: 0.8, thicknessColor: new THREE.Color(0xf5d6c6),
-      clearcoat: 0.05, clearcoatRoughness: 0.1,
-      emissive: new THREE.Color(0x000000), emissiveIntensity: 0,
+    // Use MeshPhysicalMaterial which supports thickness (subsurface) on both WebGPU and WebGL
+    const material = new THREE.MeshPhysicalMaterial({
+      color: 0xf5d6c6,
+      metalness: 0.1,
+      roughness: 0.7,
+      thickness: 0.8,
+      thicknessColor: new THREE.Color(0xf5d6c6),
+      clearcoat: 0.05,
+      clearcoatRoughness: 0.1,
+      emissive: new THREE.Color(0x000000),
+      emissiveIntensity: 0,
       side: THREE.FrontSide,
     });
+
+    // Try to upgrade to TSL node material if WebGPU is available
+    if (gpuSupported && THREE.MeshStandardNodeMaterial) {
+      this._tryTSL(material);
+    }
+
+    return material;
+  },
+
+  _tryTSL(material) {
+    // If TSL functions are available on THREE namespace, enhance the material
+    if (typeof THREE.color === 'function' || (THREE.TSL && typeof THREE.TSL.color === 'function')) {
+      try {
+        const nodeMat = new THREE.MeshStandardNodeMaterial();
+        const colorFn = THREE.color || (THREE.TSL && THREE.TSL.color);
+        const mixFn = THREE.mix || (THREE.TSL && THREE.TSL.mix);
+        const floatFn = THREE.float || (THREE.TSL && THREE.TSL.float);
+        const uniformFn = THREE.uniform || (THREE.TSL && THREE.TSL.uniform);
+
+        if (colorFn && uniformFn) {
+          nodeMat.color = colorFn(0xf5d6c6);
+          nodeMat.metalness = floatFn ? floatFn(0.1) : 0.1;
+          nodeMat.roughness = floatFn ? floatFn(0.7) : 0.7;
+          nodeMat.thickness = floatFn ? floatFn(0.8) : 0.8;
+          nodeMat.clearcoat = floatFn ? floatFn(0.05) : 0.05;
+          const rageLevel = uniformFn(0);
+          this._rageUniform = rageLevel;
+          nodeMat.emissive = mixFn ? mixFn(colorFn(0x000000), colorFn(0xff0000), rageLevel) : new THREE.Color(0x000000);
+          nodeMat.emissiveIntensity = mixFn ? mixFn(floatFn(0), floatFn(1), rageLevel) : 0;
+          return nodeMat;
+        }
+      } catch(e) {
+        console.warn('TSL upgrade failed, using WebGL material:', e);
+      }
+    }
+    return material;
   },
 };
 
@@ -636,9 +639,14 @@ class BulkCharacter {
     }
     const intensity = this.rageActive ? 0.8 + Math.sin(performance.now() * 0.02) * 0.2 : 0;
     this.morphParams.rage = this.rageActive ? Math.min(1, this.rageTimer / 15) : 0;
-    // Update TSL skin shader rage uniform
+    // Update TSL skin shader rage uniform (WebGPU path)
     if (gpuSupported && SkinShaderMaterial._rageUniform) {
       SkinShaderMaterial._rageUniform.value = this.morphParams.rage;
+    }
+    // Update WebGL skin material emissive
+    if (this.skinMaterial && !SkinShaderMaterial._rageUniform) {
+      this.skinMaterial.emissive = new THREE.Color(0x440000).multiplyScalar(this.morphParams.rage);
+      this.skinMaterial.emissiveIntensity = this.morphParams.rage * 0.8;
     }
     if (this.mats.emissive) this.mats.emissive.opacity = intensity * 0.5;
   }
@@ -1663,9 +1671,6 @@ function animate() {
       postProcessingPasses.godRay.uniforms.cameraPos.value = camera.position;
       if (scene.userData.sun) postProcessingPasses.godRay.uniforms.sunDir.value = scene.userData.sun.position.clone().normalize();
     }
-  }
-  if (postProcessingPasses.motionBlur && bulk) {
-    postProcessingPasses.motionBlur.enabled = !CONFIG.reducedMotion && bulk.velocity.length() > 30;
   }
   if (postProcessingPasses.bloom) {
     const bloom = postProcessingPasses.bloom;
