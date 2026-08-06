@@ -562,19 +562,28 @@ var sunLight, ambientLight;
 
 var Game = {
     init: function() {
-        Input.init();
-        audio = new AudioEngine();
-        Game.audio = audio;
-        clock = new THREE.Clock();
-        this.setupRenderer();
-        this.setupScene();
-        this.setupLighting();
-        particles = new ParticleSystem(scene);
-        Game.particles = particles;
-        this.createBulk();
-        this.generateCity();
-        this.setupUI();
-        this.animate();
+        try {
+            Input.init();
+            audio = new AudioEngine();
+            Game.audio = audio;
+            clock = new THREE.Clock();
+            this.setupRenderer();
+            this.setupScene();
+            this.setupLighting();
+            particles = new ParticleSystem(scene);
+            Game.particles = particles;
+            this.createBulk();
+            this.generateCity();
+            this.setupUI();
+            this.animate();
+        } catch(e) {
+            this.showError(e);
+        }
+    },
+    showError: function(e) {
+        var el = document.getElementById('error-screen');
+        el.innerHTML = '<h2>Error</h2><p>' + (e.message || e) + '</p><p style="color:#64748b;font-size:0.8em;margin-top:20px">' + (e.stack || '') + '</p>';
+        el.classList.add('show');
     },
     setupRenderer: function() {
         var canvas = document.createElement('canvas');

@@ -12,33 +12,50 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Arial', 
 #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 .hidden { display: none !important; }
 /* HUD Elements */
-.bar-container { position: absolute; left: 20px; bottom: 20px; width: 200px; height: 20px; background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 4px; pointer-events: none; }
+.bar-container { position: absolute; left: 20px; bottom: 20px; width: 200px; height: 20px; background: rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 4px; pointer-events: none; z-index: 10; }
 .bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
-#health-bar { top: 60px; }
-#rage-bar { top: 85px; }
-#combo-display { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 24px; font-weight: bold; color: #ff4444; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; }
-.minimap-container { position: absolute; top: 20px; right: 20px; width: 160px; height: 160px; background: rgba(0,0,0,0.7); border: 2px solid #fff; border-radius: 4px; pointer-events: none; overflow: hidden; }
+.crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 32px; height: 32px; pointer-events: none; z-index: 10; }
+.crosshair-dot { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 4px; height: 4px; background: rgba(255,255,255,0.8); border-radius: 50%; }
+.crosshair-line { position: absolute; background: rgba(255,255,255,0.4); transform-origin: center; }
+.crosshair-line.l1 { width: 2px; height: 12px; top: -14px; left: 50%; transform: translateX(-50%); }
+.crosshair-line.l2 { width: 2px; height: 12px; bottom: -6px; left: 50%; transform: translateX(-50%); }
+.crosshair-line.l3 { width: 12px; height: 2px; left: -6px; top: 50%; transform: translateY(-50%); }
+.crosshair-line.l4 { width: 12px; height: 2px; right: -6px; top: 50%; transform: translateY(-50%); }
+#health-bar { top: 60px; position: absolute; left: 20px; bottom: 20px; }
+#rage-bar { top: 85px; position: absolute; left: 20px; bottom: 20px; }
+.minimap-container { position: absolute; top: 20px; right: 20px; width: 160px; height: 160px; background: rgba(0,0,0,0.7); border: 2px solid #fff; border-radius: 4px; pointer-events: none; overflow: hidden; z-index: 10; }
 .minimap { width: 100%; height: 100%; }
 .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; pointer-events: auto; }
 .btn { padding: 12px 30px; font-size: 18px; background: #d4af37; color: #000; border: 2px solid #fff; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 10px; transition: all 0.2s; }
 .btn:hover { background: #e6c200; transform: scale(1.05); }
 .btn:active { transform: scale(0.98); }
-.title { font-size: 64px; font-weight: bold; color: #d4af37; text-shadow: 4px 4px 8px rgba(0,0,0,0.8); margin-bottom: 20px; }
-.subtitle { font-size: 20px; color: #fff; margin-bottom: 30px; }
 #start-screen { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
 #pause-menu { background: rgba(0,0,0,0.9); }
+#cutscene { background: rgba(0,0,0,0.95); }
+.cutscene-text { color: #fff; font-size: 24px; text-align: center; max-width: 600px; line-height: 1.6; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+.cutscene-skip { position: absolute; bottom: 20px; color: #d4af47; font-size: 14px; text-align: center; width: 100%; }
 #tutorial { position: absolute; bottom: 100px; left: 20px; background: rgba(0,0,0,0.7); color: #fff; padding: 15px; border-radius: 8px; max-width: 300px; font-size: 14px; border: 1px solid #d4af37; pointer-events: none; }
 .achievement-popup { position: absolute; top: 100px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: #d4af37; padding: 15px 30px; border-radius: 8px; border: 2px solid #d4af37; font-weight: bold; animation: fadeSlideUp 3s forwards; pointer-events: none; }
 @keyframes fadeSlideUp { 0% { opacity: 0; transform: translate(-50%, 20px); } 10% { opacity: 1; } 90% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -20px); } }
+@keyframes titleGlow { 0%, 100% { text-shadow: 4px 4px 8px rgba(0,0,0,0.8), 0 0 20px rgba(212,175,55,0.3); } 50% { text-shadow: 4px 4px 8px rgba(0,0,0,0.8), 0 0 30px rgba(212,175,55,0.8); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.title { font-size: 64px; font-weight: bold; color: #d4af47; text-shadow: 4px 4px 8px rgba(0,0,0,0.8); margin-bottom: 20px; animation: titleGlow 2s infinite; }
+.subtitle { font-size: 20px; color: #fff; margin-bottom: 30px; animation: pulse 1.5s infinite; }
 #cutscene { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 30; display: flex; align-items: center; justify-content: center; }
 .cutscene-text { color: #fff; font-size: 24px; text-align: center; max-width: 600px; line-height: 1.6; }
 .cutscene-skip { position: absolute; bottom: 20px; color: #d4af37; font-size: 14px; }
+.mobile-btns { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; z-index: 20; }
+.mobile-btn { padding: 15px 20px; font-size: 14px; background: rgba(212,175,55,0.7); color: #000; border: 2px solid #fff; border-radius: 8px; cursor: pointer; font-weight: bold; }
+.joystick-container { position: absolute; bottom: 80px; left: 20px; width: 100px; height: 100px; background: rgba(0,0,0,0.3); border-radius: 50%; z-index: 20; touch-action: none; }
+.joystick { position: absolute; top: 50%; left: 50%; width: 50px; height: 50px; background: rgba(255,255,255,0.6); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+#critical-mass { position: absolute; top: 60px; right: 20px; background: rgba(0,0,0,0.7); color: #d4af37; padding: 10px; border-radius: 8px; border: 1px solid #d4af37; font-size: 14px; z-index: 10; pointer-events: none; }
 </style>
 </head>
 <body>
 <div id="container">
   <canvas id="canvas"></canvas>
   <div id="hud">
+    <div class="crosshair" id="crosshair"><div class="crosshair-dot"></div><div class="crosshair-line l1"></div><div class="crosshair-line l2"></div><div class="crosshair-line l3"></div><div class="crosshair-line l4"></div></div>
     <div class="bar-container" id="health-bar"><div class="bar-fill" id="health-fill" style="background:#ff4444;width:100%"></div></div>
     <div class="bar-container" style="top:60px;left:20px;"><div class="bar-fill" id="rage-fill" style="background:#d4af37;width:0%"></div></div>
     <div id="combo-display" class="hidden">COMBO! x<span id="combo-count">1</span></div>
@@ -61,6 +78,19 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Arial', 
     <div class="cutscene-skip">[SPACE] to skip</div>
   </div>
   <div id="achievement-popup" class="achievement-popup hidden"></div>
+  <div id="mobile-controls" class="hidden">
+    <div class="joystick-container" id="joystick-container">
+      <div class="joystick" id="joystick"></div>
+    </div>
+    <div class="mobile-btns">
+      <button class="mobile-btn" id="jump-btn">JUMP</button>
+      <button class="mobile-btn" id="punch-btn">PUNCH</button>
+      <button class="mobile-btn" id="rage-btn">RAGE</button>
+    </div>
+  </div>
+  <div id="critical-mass" class="hidden">
+    <div>Critical Mass: <span id="cm-progress">0</span> / <span id="cm-target">10000</span></div>
+  </div>
 </div>
 <script type="importmap">
 {
@@ -73,6 +103,15 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Arial', 
 }
 </script>
 <script type="module">
+import * as THREE from 'three';
+import { color, vec2, vec3, vec4, float, uniform, attribute, varying, instanceIndex, mix } from 'three/tsl';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { MotionBlurPass } from 'three/addons/postprocessing/MotionBlurPass.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+
 // Game constants
 const WORLD_SIZE = 4000;
 const WORLD_HALF = WORLD_SIZE / 2;
@@ -102,6 +141,7 @@ let state = {
   unlocks: { sizeBoost: false, infiniteRage: false },
   criticalMass: 0,
   criticalMassTarget: 10000,
+  criticalMassReached: false,
   stats: { destroyedCars: 0, destroyedBuildings: 0, punchesThrown: 0, enemiesKilled: 0, distanceTraveled: 0, maxCombo: 0, rageUsed: 0 },
   activePowerups: {},
   powerupTimers: {},
@@ -115,19 +155,6 @@ let state = {
 };
 
 console.log('The Incredible Bulk - Initializing...');
-
-// ========================
-// SETUP: Renderer, Scene, Camera
-// ========================
-import * as THREE from 'three';
-import { color, vec2, vec3, vec4, float, uniform, attribute, varying, instanceIndex, mix } from 'three/tsl';
-import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { MotionBlurPass } from 'three/addons/postprocessing/MotionBlurPass.js';
-import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 let renderer, scene, camera, composer, controls, clock;
 let canvas, canvas2d;
@@ -813,6 +840,7 @@ function showCutscene(text) {
   state.cutscene = true;
   const el = document.getElementById('cutscene'); const tel = document.getElementById('cutscene-text');
   tel.textContent = text; el.classList.remove('hidden');
+  document.getElementById('start-screen')?.classList.add('hidden');
   document.getElementById('start-btn')?.classList.add('hidden');
 }
 function hideCutscene() { state.cutscene = false; document.getElementById('cutscene').classList.add('hidden'); }
@@ -835,6 +863,13 @@ function updateUI() {
   const comboEl = document.getElementById('combo-display');
   if (state.combo > 1) { comboEl.classList.remove('hidden'); comboEl.innerHTML = 'COMBO! x<span id="combo-count">' + state.combo + '</span>'; }
   else comboEl.classList.add('hidden');
+  // Critical mass progress
+  const cm = document.getElementById('critical-mass');
+  if (cm) {
+    document.getElementById('cm-progress').textContent = Math.floor(state.criticalMass);
+    document.getElementById('cm-target').textContent = state.criticalMassTarget;
+    cm.classList.toggle('hidden', state.criticalMass >= state.criticalMassTarget);
+  }
 }
 
 function saveGame() {
@@ -974,6 +1009,14 @@ function updateGameplay(delta) {
     state.lastChunkX = Math.floor(b.group.position.x / 1000); state.lastChunkZ = Math.floor(b.group.position.z / 1000); saveGame();
   }
   state.score += b.velocity.length() * dt * 0.1;
+  // Check critical mass
+  if (state.criticalMass >= state.criticalMassTarget && !state.criticalMassReached) {
+    state.criticalMassReached = true;
+    showAchievement("CRITICAL MASS REACHED! Endless Mode Unlocked!");
+    state.unlocks.infiniteRage = true;
+    showCutscene("CRITICAL MASS ACHIEVED!\n\nThe Bulk has reached maximum chaos!\nEndless mode is now unlocked.\nSurvive as long as you can against endless waves!");
+    setTimeout(() => { hideCutscene(); state.game = 'playing'; }, 3000);
+  }
   updateUI();
 }
 
@@ -1022,13 +1065,13 @@ function spawnEnemy(pos, type) {
     group = new THREE.Group();
     const m = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 0.5), new THREE.MeshStandardMaterial({ color: 0x00aa00 }));
     group.add(m); group.position.copy(pos); group.position.y = 5;
-    const enemy = { group, type: 'enemy', health: 50, update: makeEnemyAI(20), takeDamage: function(d) { this.health -= d; if (this.health <= 0) { this.active = false; state.stats.enemiesKilled++; state.score += 100; createImpactEffect(this.group.position, new THREE.Vector3(0,-1,0)); } }, active: true };
+     const enemy = { group, type: 'enemy', health: 50, update: makeEnemyAI(20), takeDamage: function(d) { this.health -= d; if (this.health <= 0) { this.active = false; state.stats.enemiesKilled++; state.score += 100; state.criticalMass += 20; createImpactEffect(this.group.position, new THREE.Vector3(0,-1,0)); } }, active: true };
     scene.add(group); GameObjectManager.add(enemy, 'enemy');
   } else if (type === 'drone') {
     group = new THREE.Group();
     const m = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), new THREE.MeshStandardMaterial({ color: 0x888888, emissive: 0x4444ff }));
     group.add(m); group.position.copy(pos); group.position.y = 50;
-    const enemy = { group, type: 'enemy', health: 30, update: makeDroneAI(15), takeDamage: function(d) { this.health -= d; if (this.health <= 0) { this.active = false; state.stats.enemiesKilled++; state.score += 150; } }, active: true };
+     const enemy = { group, type: 'enemy', health: 30, update: makeDroneAI(15), takeDamage: function(d) { this.health -= d; if (this.health <= 0) { this.active = false; state.stats.enemiesKilled++; state.score += 150; state.criticalMass += 30; } }, active: true };
     scene.add(group); GameObjectManager.add(enemy, 'enemy');
   } else if (type === 'tank') {
     group = new THREE.Group();
@@ -1036,7 +1079,7 @@ function spawnEnemy(pos, type) {
     const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 4), new THREE.MeshStandardMaterial({ color: 0x336600 }));
     turret.position.z = 4; group.add(body, turret);
     group.position.copy(pos); group.position.y = 5;
-    const enemy = { group, type: 'enemy', health: 300, update: makeTankAI(30), takeDamage: function(d) { this.health -= d; state.score += 50; if (this.health <= 0) { this.active = false; state.stats.enemiesKilled++; state.score += 500; createShockwave(this.group.position, 30); } }, active: true };
+     const enemy = { group, type: 'enemy', health: 300, update: makeTankAI(30), takeDamage: function(d) { this.health -= d; state.score += 50; state.criticalMass += 100; if (this.health <= 0) { this.active = false; state.stats.enemiesKilled++; state.score += 500; createShockwave(this.group.position, 30); } }, active: true };
     scene.add(group); GameObjectManager.add(enemy, 'enemy');
   } else if (type === 'chopper') {
     group = new THREE.Group();
@@ -1044,7 +1087,7 @@ function spawnEnemy(pos, type) {
     m.rotation.z = Math.PI / 2; const rotor = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.5), new THREE.MeshBasicMaterial({ color: 0x444444, side: THREE.DoubleSide }));
     rotor.rotation.x = Math.PI / 2; group.add(m, rotor);
     group.position.copy(pos); group.position.y = 100;
-    const enemy = { group, type: 'enemy', health: 100, update: makeChopperAI(40), takeDamage: function(d) { this.health -= d; if (this.health <= 0) { this.active = false; state.stats.enemiesKilled++; state.score += 300; } }, active: true };
+     const enemy = { group, type: 'enemy', health: 100, update: makeChopperAI(40), takeDamage: function(d) { this.health -= d; if (this.health <= 0) { this.active = false; state.stats.enemiesKilled++; state.score += 300; state.criticalMass += 50; } }, active: true };
     scene.add(group); GameObjectManager.add(enemy, 'enemy');
   }
 }
@@ -1054,7 +1097,33 @@ function makeEnemyAI(speed) {
     const dir = bulk.group.position.clone().sub(this.group.position).normalize(); dir.y = 0;
     this.group.position.addScaledVector(dir, speed * delta);
     this.group.lookAt(bulk.group.position);
+    // Shooting
+    this.shootTimer = (this.shootTimer || 0) - delta;
+    if (this.shootTimer <= 0 && !this.isGrabbing) {
+      this.shootTimer = 1 + Math.random() * 2;
+      const projGeo = new THREE.SphereGeometry(0.3, 8, 8);
+      const projMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const proj = new THREE.Mesh(projGeo, projMat);
+      proj.position.copy(this.group.position); proj.position.y += 2;
+      proj.userData = { velocity: dir.clone().multiplyScalar(30), life: 5, owner: this };
+      scene.add(proj); GameObjectManager.add({ group: { position: proj.position }, type: 'projectile', update: updateProjectile, active: true, takeDamage: (d) => {} }, 'projectile');
+      playSound('punch_light', 0.3);
+    }
   };
+}
+
+function updateProjectile(delta) {
+  this.group.position.addScaledVector(this.group.userData.velocity, delta);
+  this.group.userData.life -= delta;
+  if (this.group.userData.life <= 0 || this.group.position.distanceTo(bulk.group.position) > 500) {
+    this.active = false; scene.remove(this.group);
+  }
+  // Hit detection
+  if (this.group.position.distanceTo(bulk.group.position) < 5) {
+    this.active = false; scene.remove(this.group);
+    bulk.takeDamage(5);
+    ParticleSystem.create(this.group.position, 10, 'dust', 0xff0000);
+  }
 }
 
 function makeDroneAI(speed) {
@@ -1368,7 +1437,7 @@ const TimeOfDay = {
   time: 0, // 0-1 (dawn to dawn)
   targetTime: 0.3, // Late afternoon start
   update(deltaTime) {
-    this.time = THREE.MathUtils.damp(this.time, this.targetTime, 0.05, deltaTime);
+    this.time = THREE.MathUtils.lerp(this.time, this.targetTime, 0.02);
     const t = this.time;
     // Update sun direction
     const sun = scene.userData.sun;
@@ -1420,10 +1489,11 @@ function damageBuilding(mesh, damage, hitPos) {
     }
   }
 
-  if (mesh.userData.health <= 0) {
+      if (mesh.userData.health <= 0) {
     destroyBuilding(mesh);
     state.stats.destroyedBuildings++;
     state.score += mesh.userData.height * 10;
+    state.criticalMass += mesh.userData.height * 5;
     state.rage = Math.min(100, state.rage + 10);
     createShockwave(mesh.position, mesh.userData.height);
     createDebris(mesh.position, 20);
@@ -1509,7 +1579,15 @@ function animate() {
     TimeOfDay.update(delta);
     TimeOfDay.setProgress(state.score);
   }
-  if (state.game === 'cutscene' && Input.isJustPressed('Space')) { hideCutscene(); state.game = 'playing'; }
+  if (state.game === 'cutscene' && Input.isJustPressed('Space')) {
+    hideCutscene(); state.game = 'playing';
+    setTimeout(() => showTutorial("WASD to MOVE, SPACE to JUMP, Mouse to look. Left-click to PUNCH, Right-click to GRAB. R for RAGE!"), 500);
+    setTimeout(() => showTutorial("Shift+Space for SUPER LEAP! Consecutive jumps get higher! (x5 max)"), 5000);
+    setTimeout(() => {
+      showTutorial("Q for SLAM, E for CLAP in Rage Mode! R again for BULK SMASH!");
+      setTimeout(() => { state.tutorialDone = true; localStorage.setItem('tutorialDone', 'true'); }, 2000);
+    }, 10000);
+  }
 
   physics.update(delta);
   ParticleSystem.update(delta);
@@ -1537,6 +1615,37 @@ function animate() {
 }
 
 // ========================
+// Mobile Controls
+// ========================
+function initMobileControls() {
+  const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (isMobile) {
+    document.getElementById('mobile-controls').classList.remove('hidden');
+    document.getElementById('jump-btn').addEventListener('touchstart', (e) => { e.preventDefault(); Input.keys['Space'] = true; });
+    document.getElementById('jump-btn').addEventListener('touchend', (e) => { e.preventDefault(); Input.keys['Space'] = false; });
+    document.getElementById('punch-btn').addEventListener('touchstart', (e) => { e.preventDefault(); Input.mouse.button = 0; });
+    document.getElementById('punch-btn').addEventListener('touchend', (e) => { e.preventDefault(); Input.mouse.button = -1; });
+    document.getElementById('rage-btn').addEventListener('touchstart', (e) => { e.preventDefault(); Input.keys['KeyR'] = true; });
+    document.getElementById('rage-btn').addEventListener('touchend', (e) => { e.preventDefault(); Input.keys['KeyR'] = false; });
+
+    // Virtual joystick
+    const js = document.getElementById('joystick'); let jsActive = false, startX = 0, startY = 0;
+    const jc = document.getElementById('joystick-container');
+    jc.addEventListener('touchstart', (e) => { jsActive = true; startX = e.touches[0].clientX; startY = e.touches[0].clientY; });
+    jc.addEventListener('touchmove', (e) => {
+      if (!jsActive) return;
+      const x = e.touches[0].clientX - startX; const y = e.touches[0].clientY - startY;
+      const dist = Math.sqrt(x*x + y*y); const maxDist = 40; const limited = Math.min(dist, maxDist);
+      const angle = Math.atan2(y, x);
+      js.style.transform = `translate(calc(-50% + ${Math.cos(angle)*limited}px), calc(-50% + ${Math.sin(angle)*limited}px))`;
+      Input.keys['KeyW'] = y < -10; Input.keys['KeyS'] = y > 10;
+      Input.keys['KeyA'] = x < -10; Input.keys['KeyD'] = x > 10;
+    });
+    jc.addEventListener('touchend', () => { jsActive = false; js.style.transform = 'translate(-50%, -50%)'; Input.keys['KeyW'] = false; Input.keys['KeyS'] = false; Input.keys['KeyA'] = false; Input.keys['KeyD'] = false; });
+  }
+}
+
+// ========================
 // Bootstrap
 // ========================
 window.onBasicInit = function() {
@@ -1546,6 +1655,7 @@ window.onBasicInit = function() {
   MusicSystem.init();
   initMinimap();
   generateCity();
+  initMobileControls();
 
   // Create Bulk
   const b = new BulkCharacter();
