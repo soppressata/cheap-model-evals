@@ -109,12 +109,13 @@ ESC - Pause | F - Climb
 <div id="rage-overlay"></div>
 <div id="crosshair"></div>
 
-<!-- Three.js as classic script (UMD build) - works over file:// protocol -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<!-- Three.js as classic script (UMD build) - local copy works over file:// protocol -->
+<script src="three.min.js"></script>
 <script>
-// Wait for THREE to load from CDN
+// Wait for THREE to load from local file
 if (typeof THREE === 'undefined') {
     document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-screen').innerHTML = '<h2>Missing three.min.js</h2><p>Please ensure three.min.js is in the same folder as this HTML file. It should have been included in the download.</p>';
     document.getElementById('error-screen').classList.add('show');
     document.getElementById('start-screen').style.display = 'none';
 }
