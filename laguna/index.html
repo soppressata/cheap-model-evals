@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Paper Glider: Endless Flight</title>
+  <script type="module" src="/src/main.js" defer></script>
+  <link rel="icon" href="data:,"> <!-- avoid favicon net request -->
+  <style>
+    /* cursor hide while flying for immersion */
+    .fly-cursor { cursor: none; }
+    .meter-swing { transition: none; }
+  </style>
+</head>
+<body class="h-full overflow-hidden bg-[#05060a] font-body text-paper-50">
+
+  <!-- WebGL canvas -->
+  <canvas id="glcanvas" class="absolute inset-0 h-full w-full"></canvas>
+
+  <!-- Post-processing DOM overlays -->
+  <div id="vignette" class="postproc"></div>
+  <div id="grain" class="postproc"></div>
+  <div id="flash" class="postproc bg-white" style="opacity:0; transition:opacity 0ms;"></div>
+
+  <!-- Reticle follows the mouse -->
+  <div id="reticle"></div>
+
+  <!-- ===== HUD (in-flight) ===== -->
+  <div id="hud" class="pointer-events-none fixed inset-0 hidden">
+    <!-- top status panels -->
+    <div class="absolute top-4 left-4 flex gap-3">
+      <div class="glass-panel px-3 py-2 rounded-xl text-xs">
+        <div class="text-cyan-300/70">ALTITUDE</div>
+        <div id="altitude" class="text-xl font-mono text-cyan-300">0</div>
+      </div>
+      <div class="glass-panel px-3 py-2 rounded-xl text-xs">
+        <div class="text-amber-300/70">AIRSPEED</div>
+        <div id="airspeed" class="text-xl font-mono text-amber-300">0</div>
+      </div>
+      <div class="glass-panel px-3 py-2 rounded-xl text-xs">
+        <div class="text-amber-300/70">DISTANCE</div>
+        <div id="distance" class="text-xl font-mono text-amber-300">0 m</div>
+      </div>
+      <div class="glass-panel px-3 py-2 rounded-xl text-xs flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-amber-300" fill="currentColor"><circle cx="12" cy="12" r="7" fill="currentColor"/><path d="M12 2v7l5 3"/></svg>
+        <span id="coins" class="font-mono text-amber-300">0</span>
+      </div>
+      <div class="glass-panel px-3 py-2 rounded-xl text-xs">
+        <div class="text-cyan-300/70">MULTIPLIER</div>
+        <div id="multiplier" class="text-xl font-mono text-cyan-300">x1.0</div>
+      </div>
+    </div>
+
+    <!-- boost bar -->
+    <div class="absolute top-4 right-4 w-40 glass-panel px-3 py-2 rounded-xl">
+      <div class="flex justify-between text-xs text-cyan-300/70 mb-1">
+        <span>BOOST</span><span id="boost-label">100%</span>
+      </div>
+      <div class="h-2.5 w-full bg-white/5 rounded-full overflow-hidden">
+        <div id="boost-fill" class="h-full w-0 bg-gradient-to-r from-cyan-400 to-amber-400 transition-all rounded-full"></div>
+      </div>
+    </div>
+
+    <!-- launch power meter (centered) -->
+    <div id="powermeter" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none hidden">
+      <div class="glass-panel px-6 py-3 rounded-2xl mb-4 w-64">
+        <div class="flex justify-between text-xs text-cyan-300/70 mb-1">
+          <span>HOLD SPACE / CLICK</span><span>CHARGE</span>
+        </div>
+        <div class="h-3 w-full bg-white/5 rounded-full overflow-hidden">
+          <div id="charge-fill" class="h-full w-0 bg-gradient-to-r from-amber-400 to-cyan-400 rounded-full meter-swing"></div>
+        </div>
+        <div class="mt-2 text-center text-xs text-amber-300/60">release at peak for best launch</div>
+      </div>
+    </div>
+
+    <!-- PULL UP warning -->
+    <div id="pullup" class="absolute left-1/2 -translate-x-1/2 bottom-24 hidden">
+      <div class="px-6 py-2 bg-red-500/30 border-2 border-red-400 text-red-200 font-bold rounded-xl backdrop-blur-xl shadow-[0_0_16px_#ff4545]">
+        PULL UP!
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Title screen ===== -->
+  <div id="title" class="fixed inset-0 flex items-center justify-center">
+    <div class="glass-panel p-10 rounded-[28px] w-full max-w-md text-center">
+      <div class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-300 via-cyan-300 to-amber-300 mb-2">
+        Paper Glider
+      </div>
+      <div class="text-cyan-300/60 mb-8 text-sm">Endless Flight</div>
+      <div class="flex flex-col gap-3">
+        <button id="btn-play" class="btn-confirm w-full">✈️ FLY</button>
+        <div class="flex gap-3">
+          <button id="btn-hangar" class="btn-ghost flex-1">
+            <svg class="w-5 h-5 mr-1 inline" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20V10m0 0l-4 4m4-4l4 4"/></svg>Hangar
+          </button>
+          <button id="btn-workshop" class="btn-ghost flex-1">
+            <svg class="w-5 h-5 mr-1 inline" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9m-9 6h9m2 0a2 2 0 11-4 0 2 2 0 114 0zm0 0V9a2 2 0 114 0v3m-6 6a2 2 0 11-4 0 2 2 0 114 0z"/></svg>Workshop
+          </button>
+        </div>
+        <button id="btn-quit" class="btn-ghost">
+          <svg class="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.952 8.558a.5.5 0 01 .046.91l-3.5 1a.5.5 0 01-.647-.416L13 7.5a.5.5 0 011 0v1.5l2.952-1.042zM6 9h12a2 2 0 110 4H6a2 2 0 110-4z"/></svg>Quit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Hangar ===== -->
+  <div id="hangar" class="fixed inset-0 hidden items-center justify-center">
+    <div class="glass-panel p-8 rounded-[24px] w-full max-w-3xl max-h-[85vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="text-2xl font-bold text-amber-300">Hangar</h2>
+        <button id="btn-hangar-back" class="btn-ghost">Back</button>
+      </div>
+      <div id="hangar-grid" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+    </div>
+  </div>
+
+  <!-- ===== Workshop ===== -->
+  <div id="workshop" class="fixed inset-0 hidden items-center justify-center">
+    <div class="glass-panel p-8 rounded-[24px] w-full max-w-4xl max-h-[85vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-5">
+        <h2 class="text-2xl font-bold text-cyan-300">Workshop</h2>
+        <button id="btn-workshop-back" class="btn-ghost">Back</button>
+      </div>
+      <div class="flex flex-col md:flex-row gap-6 items-start">
+        <div class="grid grid-cols-2 gap-3 w-full md:w-1/2">
+          <div>
+            <label class="text-xs text-cyan-300/60">Primary</label>
+            <input id="w-primary" type="color" value="#fb9233" class="w-full h-9">
+          </div>
+          <div>
+            <label class="text-xs text-cyan-300/60">Secondary</label>
+            <input id="w-secondary" type="color" value="#1e293b" class="w-full h-9">
+          </div>
+          <div>
+            <label class="text-xs text-cyan-300/60">Pattern</label>
+            <select id="w-pattern" class="w-full h-9 bg-black/30 rounded-xl border border-white/20 text-amber-300"></select>
+          </div>
+          <div>
+            <label class="text-xs text-cyan-300/60">Finish</label>
+            <select id="w-finish" class="w-full h-9 bg-black/30 rounded-xl border border-white/20 text-cyan-300"></select>
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-xs text-cyan-300/60">Contrail</label>
+            <select id="w-contrail" class="w-full h-9 bg-black/30 rounded-xl border border-white/20 text-amber-300"></select>
+          </div>
+          <div class="md:col-span-2 pt-2">
+            <button id="btn-workshop-apply" class="btn-confirm w-full">Apply to Glider</button>
+          </div>
+        </div>
+        <!-- live 3D preview -->
+        <div class="w-full md:w-1/2 flex justify-center">
+          <canvas id="preview" class="w-56 h-56 rounded-2xl bg-black/40 border border-white/20"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Game Over ===== -->
+  <div id="gameover" class="fixed inset-0 hidden items-center justify-center">
+    <div class="glass-panel p-10 rounded-[28px] w-full max-w-md text-center">
+      <h2 class="text-3xl font-bold text-red-300 mb-6">Crashed</h2>
+      <div class="grid grid-cols-2 gap-3 text-center mb-6">
+        <div><div class="text-cyan-300/60 text-xs">DISTANCE</div><div id="go-distance" class="text-xl font-mono text-cyan-300">0 m</div></div>
+        <div><div class="text-cyan-300/60 text-xs">AIR TIME</div><div id="go-airtime" class="text-xl font-mono text-cyan-300">0 s</div></div>
+        <div><div class="text-amber-300/60 text-xs">RINGS</div><div id="go-rings" class="text-xl font-mono text-amber-300">0</div></div>
+        <div><div class="text-cyan-300/60 text-xs">COINS</div><div id="go-coins" class="text-xl font-mono text-cyan-300">+0</div></div>
+      </div>
+      <div class="text-amber-300/50 text-xs mb-6" id="go-highscore"></div>
+      <div class="flex gap-3">
+        <button id="btn-restart" class="btn-confirm flex-1">↻ Restart</button>
+        <button id="btn-go-hangar" class="btn-ghost flex-1">Hangar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pop-up multiplier numbers -->
+  <div id="pops" class="fixed inset-0 pointer-events-none hidden"></div>
+
+  <script type="module">
+    // tiny Lucide-style icon set is inlined as SVGs in markup above; no runtime dependency.
+  </script>
+</body>
+</html>
