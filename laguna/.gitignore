@@ -2,3 +2,7 @@ node_modules/
 dist/
 *.log
 .smoke.cjs
+# dev-only smoke-test harness (not part of the shipped game)
+smoke.mjs
+three-patch.cjs
+.smoke.cjs

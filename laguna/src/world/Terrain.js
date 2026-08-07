@@ -324,6 +324,12 @@ export class Terrain {
     const cArr = cols.array;
     const b = this.biome;
     const inv = 1 / (b.amp * 2 || 1);
+    // Interpolate tint per channel. MathUtils.lerp on raw hex INTEGERS carries
+    // bits across byte boundaries and mangles mid-tones (glitchy mountains);
+    // THREE.Color.lerpColors blends R/G/B independently and is correct.
+    const cLow = new THREE.Color(b.tintLow);
+    const cHigh = new THREE.Color(b.tintHigh);
+    const c = new THREE.Color();
     for (let j = 0; j <= s; j++) {
       const row = j * (s + 1);
       const bz2 = bz + j * step;
@@ -336,10 +342,10 @@ export class Terrain {
         arr[vi + 1] = h;               // world Y height
         arr[vi + 2] = j * step;        // local Z (grid)
         const t = Math.pow(THREE.MathUtils.clamp((h - b.base) * inv + 0.5, 0, 1), 0.75);
-        const c = THREE.MathUtils.lerp(b.tintLow, b.tintHigh, t);
-        cArr[vi] = (c >> 16 & 255) / 255;
-        cArr[vi + 1] = (c >> 8 & 255) / 255;
-        cArr[vi + 2] = (c & 255) / 255;
+        c.lerpColors(cLow, cHigh, t);
+        cArr[vi] = c.r;
+        cArr[vi + 1] = c.g;
+        cArr[vi + 2] = c.b;
       }
     }
     pos.needsUpdate = true;

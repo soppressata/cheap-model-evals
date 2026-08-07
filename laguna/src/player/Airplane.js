@@ -271,7 +271,7 @@ export class Airplane {
       .copy(this.position)
       .addScaledVector(camForward, dist)
       .addScaledVector(camRight, this._mouse.x * dist * 0.85)
-      .addScaledVector(this._up, -this._mouse.y * dist * 0.85);
+      .addScaledVector(this._up, this._mouse.y * dist * 0.85); // mouse-up => nose-up (Y was inverted)
 
     const desired = new THREE.Vector3().subVectors(target, this.position).normalize();
     // clamp the nose to a sane pitch cone (no straight up/down)
